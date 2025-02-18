@@ -19,8 +19,6 @@ pub mod ada3dp {
 
 use pyo3::{exceptions::PyValueError, PyErr};
 
-/// Core function to decode the file into a Polars DataFrame, without Python error handling
-use polars::prelude::*;
 
 fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     let file = File::open(file_path)?;

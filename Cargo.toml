@@ -15,5 +15,6 @@ prost = "0.13"
 prost-types = "0.13"
 pyo3-polars = "0.20.0"
 
+
 [build-dependencies]
 prost-build = "0.13.5"
