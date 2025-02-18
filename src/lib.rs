@@ -1,15 +1,18 @@
 // lib.rs
 
-use ada3dp::{Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup, Vector3D};
+use ada3dp::{
+    Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup,
+    Vector3D,
+};
 use polars::prelude::*;
 use prost::Message;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use pyo3_polars::PyDataFrame;
+use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::io::{BufReader, Cursor, Read};
-
 pub mod ada3dp {
     include!(concat!(env!("OUT_DIR"), "/ada3_dp.rs"));
 }
@@ -17,7 +20,7 @@ pub mod ada3dp {
 use pyo3::{exceptions::PyValueError, PyErr};
 
 /// Core function to decode the file into a Polars DataFrame, without Python error handling
-fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn std::error::Error>> {
+fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
     let mut buf = Vec::new();
@@ -149,7 +152,7 @@ fn ada3dp_to_polars(file_path: &str) -> PyResult<PyDataFrame> {
         .map(|df| PyDataFrame(df))
 }
 
-fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut tool_path_data = ToolPathData {
         tool_path_groups: Vec::new(),
         parameters: vec![Parameters {
@@ -229,7 +232,7 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn std::error::Error
                 .map(|&col| segment_df.column(col)?.f64().map(|s| s.into_iter()))
                 .collect::<Result<Vec<_>, PolarsError>>()?;
 
-            for _ in 0..segment_df.height() {
+            for i in 0..segment_df.height() {
                 let point = Point {
                     position: Some(Vector3D {
                         x: iters[0].next().flatten().unwrap_or(f64::NAN),
