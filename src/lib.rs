@@ -1,9 +1,6 @@
 // lib.rs
 
-use ada3dp::{
-    EventData, FanData, Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup,
-    Vector3D,
-};
+use ada3dp::{Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup, Vector3D};
 use polars::prelude::*;
 use prost::Message;
 use pyo3::prelude::*;
@@ -13,12 +10,12 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::io::{BufReader, Cursor, Read};
+use std::vec;
 pub mod ada3dp {
     include!(concat!(env!("OUT_DIR"), "/ada3_dp.rs"));
 }
 
 use pyo3::{exceptions::PyValueError, PyErr};
-
 
 fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     let file = File::open(file_path)?;
@@ -223,10 +220,8 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
             path_segments: Vec::new(),
         };
 
-        let grouped_segments = layer_df.partition_by_stable(["segmentID"], true)?;
+        let grouped_segments = layer_df.partition_by_stable(["segmentID"], false)?;
         for segment_df in grouped_segments {
-            let segment_id = segment_df.column("segmentID")?.i32()?.get(0).unwrap_or(0);
-
             let mut path_segment = PathSegment {
                 points: Vec::new(),
                 process_on: false,
@@ -268,6 +263,24 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
                 "speed",
             ];
 
+            // handling the list[Float64] column is a pain. So we collect it first into a simple Vec<Vec<f64>>
+            let list_column = segment_df.column("externalAxes")?;
+            let chunked_array = list_column.list()?;
+            let collected_data: Vec<Vec<f64>> = chunked_array
+                .into_iter()
+                .map(|opt_list| {
+                    opt_list
+                        .map(|list| {
+                            list.f64()
+                                .unwrap()
+                                .into_iter()
+                                .map(|opt_f| opt_f.unwrap_or(0.0))
+                                .collect()
+                        })
+                        .unwrap_or_else(|| Vec::new())
+                })
+                .collect();
+
             let mut iters = columns
                 .iter()
                 .map(|&col| segment_df.column(col)?.f64().map(|s| s.into_iter()))
@@ -293,7 +306,7 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
                     }),
                     deposition: iters[10].next().flatten().unwrap_or(f64::NAN),
                     speed: iters[11].next().flatten().unwrap_or(f64::NAN),
-                    external_axes: vec![],
+                    external_axes: collected_data[i].clone(),
                     fans: vec![],
                     user_events: vec![],
                 };
