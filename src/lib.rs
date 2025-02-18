@@ -1,7 +1,7 @@
 // lib.rs
 
 use ada3dp::{
-    Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup,
+    EventData, FanData, Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup,
     Vector3D,
 };
 use polars::prelude::*;
@@ -20,6 +20,8 @@ pub mod ada3dp {
 use pyo3::{exceptions::PyValueError, PyErr};
 
 /// Core function to decode the file into a Polars DataFrame, without Python error handling
+use polars::prelude::*;
+
 fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
@@ -42,8 +44,9 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     let mut external_axes = Vec::new();
     let mut deposition = Vec::new();
     let mut speed = Vec::new();
-    let mut fans = Vec::new();
-    let mut user_events = Vec::new();
+    let mut fans_num = Vec::new(); // For FanData num
+    let mut fans_speed = Vec::new(); // For FanData speed
+    let mut user_events = Vec::new(); // For EventData num
     let mut speed_tcp = Vec::new();
     let mut segment_type = Vec::new();
     let mut layer_index = Vec::new();
@@ -92,12 +95,30 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
                     ori_w.push(f64::NAN);
                 }
 
+                // External Axes - Vector of f64
                 external_axes.push(point.external_axes.clone());
-                deposition.push(point.deposition);
-                speed.push(point.speed);
-                fans.push(point.fans.clone());
-                user_events.push(point.user_events.clone());
 
+                // Deposition
+                deposition.push(point.deposition);
+
+                // Speed
+                speed.push(point.speed);
+
+                // Handle Fans - Push the num and speed for each FanData
+                let fan_data_num = point.fans.iter().map(|fan| fan.num).collect::<Vec<_>>();
+                let fan_data_speed = point.fans.iter().map(|fan| fan.speed).collect::<Vec<_>>();
+                fans_num.push(fan_data_num);
+                fans_speed.push(fan_data_speed);
+
+                // Handle User Events - Push the num for each EventData
+                let user_event_data = point
+                    .user_events
+                    .iter()
+                    .map(|event| event.num)
+                    .collect::<Vec<_>>();
+                user_events.push(user_event_data);
+
+                // Other segment data
                 speed_tcp.push(segment.speed_tcp);
                 segment_type.push(segment.r#type);
                 layer_index.push(group.layer_index);
@@ -137,6 +158,28 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
         Series::new("toolID".into(), tool_id).into(),
         Series::new("materialID".into(), material_id).into(),
         Series::new("segmentID".into(), segment_id).into(),
+        // New Columns for fans and user events (List of integers)
+        Series::new(
+            "fans.num".into(),
+            ListChunked::from_iter(fans_num.into_iter().map(|v| Series::new("".into(), v))),
+        )
+        .into(),
+        Series::new(
+            "fans.speed".into(),
+            ListChunked::from_iter(fans_speed.into_iter().map(|v| Series::new("".into(), v))),
+        )
+        .into(),
+        Series::new(
+            "userEvents.num".into(),
+            ListChunked::from_iter(user_events.into_iter().map(|v| Series::new("".into(), v))),
+        )
+        .into(),
+        // External Axes - List of floats
+        Series::new(
+            "externalAxes".into(),
+            ListChunked::from_iter(external_axes.into_iter().map(|v| Series::new("".into(), v))),
+        )
+        .into(),
     ])?;
 
     Ok(df)
