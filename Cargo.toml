@@ -1,0 +1,23 @@
+[package]
+name = "py-adaone"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+name = "py_adaone"
+crate-type = ["cdylib"]
+
+[dependencies]
+polars = "0.46.0"
+pyo3 = { version = "0.23.3", features = ["extension-module"] }
+prost = "0.13"
+prost-types = "0.13"
+pyo3-polars = "0.20.0"
+
+
+[build-dependencies]
+prost-build = "0.13.5"
+
+
+

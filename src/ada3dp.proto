@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package Ada3DP;
+
+message Vector3D {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message Quaternion {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+  double w = 4;
+}
+
+message FanData {
+  int32 num = 1;
+  int32 speed = 2;
+}
+
+message EventData {
+  int32 num = 1;
+}
+
+message Parameters {
+  enum PathPlanningStrategy { 
+     PLANAR_HORIZONTAL = 0;
+     PLANAR_ANGLED = 1;
+     PLANAR_ALONG_GUIDE_CURVE = 2;
+     REVOLVED_SURFACE = 3;
+     RADIAL = 4;
+     NON_PLANAR_SURFACE = 5;
+     GEODESIC = 6;
+     CONICAL_FIELDS = 7;
+     RADIAL_360 = 8;
+     CLADDING = 9;
+  }
+
+  double layerHeight = 1;
+  PathPlanningStrategy pathPlanningStrategy = 2;
+  double posiAxis1Val = 3;
+  double posiAxis2Val = 4;
+  bool posiAxis1Dynamic = 5;
+  bool posiAxis2Dynamic = 6;
+  double depositionWidth = 7;
+}
+
+message Point {
+  Vector3D position = 1;
+  Vector3D direction = 2;
+  Quaternion orientation = 3;
+  repeated double externalAxes = 4;
+  double deposition = 5;
+  double speed = 6;
+  repeated FanData fans = 7;
+  repeated EventData userEvents = 8;
+} 
+
+message PathSegment {
+  enum ToolPathType { 
+     NONE = 0;
+     WALL_OUTER = 1; 
+     WALL_INNER = 2;
+     INFILL = 3; 
+     BRIM = 4; 
+     TRAVEL = 5;
+     RAFT = 6;
+  }
+
+  repeated Point points = 1;
+  bool processOn = 2;
+  ToolPathType type = 3;
+  float processOnDelay = 4;
+  float processOffDelay = 5;
+  float startDelay = 6;
+  float endDelay = 7;
+  int32 speedTCP = 8;
+  int32 equipmentID = 9;
+  int32 toolID = 10;
+  int32 materialID = 11;
+}
+
+message ToolPathGroup {
+  int32 layerIndex = 1;
+  repeated PathSegment pathSegments = 2;
+}
+
+message ToolPathData {
+  repeated ToolPathGroup toolPathGroups = 1;
+  repeated Parameters parameters = 2;
+}
