@@ -1528,6 +1528,7 @@ dependencies = [
  "prost-types",
  "pyo3",
  "pyo3-polars",
+ "smallvec",
 ]
 
 [[package]]

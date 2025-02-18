@@ -1,24 +1,46 @@
-// lib.rs
-
 use ada3dp::{
     EventData, FanData, Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup,
     Vector3D,
 };
 use polars::prelude::*;
 use prost::Message;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
 use pyo3_polars::PyDataFrame;
+use smallvec::SmallVec;
 use std::error::Error;
 use std::fs::File;
-use std::io::Write;
-use std::io::{BufReader, Cursor, Read};
+use std::io::{BufReader, Cursor, Read, Write};
 use std::vec;
 pub mod ada3dp {
     include!(concat!(env!("OUT_DIR"), "/ada3_dp.rs"));
 }
 
-use pyo3::{exceptions::PyValueError, PyErr};
+// Utility function to handle missing `Vector3D`
+fn extract_vector3d(v: Option<&Vector3D>) -> (f64, f64, f64) {
+    match v {
+        Some(vec) => (vec.x, vec.y, vec.z),
+        None => (f64::NAN, f64::NAN, f64::NAN),
+    }
+}
+
+// Utility function to handle missing `Quaternion`
+fn extract_quaternion(q: Option<&Quaternion>) -> (f64, f64, f64, f64) {
+    match q {
+        Some(ori) => (ori.x, ori.y, ori.z, ori.w),
+        None => (f64::NAN, f64::NAN, f64::NAN, f64::NAN),
+    }
+}
+
+// Extract FanData as (Vec<i32>, Vec<i32>)
+fn extract_fans_data(fans: &[FanData]) -> (Vec<i32>, Vec<i32>) {
+    fans.iter().map(|fan| (fan.num, fan.speed)).unzip()
+}
+
+// Extract User Events as Vec<i32>
+fn extract_user_events(events: &[EventData]) -> Vec<i32> {
+    events.iter().map(|event| event.num).collect()
+}
 
 fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     let file = File::open(file_path)?;
@@ -28,7 +50,6 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
 
     let tool_path_data = ToolPathData::decode(&mut Cursor::new(&buf))?;
 
-    // Preallocate vectors for each column
     let mut pos_x = Vec::new();
     let mut pos_y = Vec::new();
     let mut pos_z = Vec::new();
@@ -42,9 +63,9 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     let mut external_axes = Vec::new();
     let mut deposition = Vec::new();
     let mut speed = Vec::new();
-    let mut fans_num = Vec::new(); // For FanData num
-    let mut fans_speed = Vec::new(); // For FanData speed
-    let mut user_events = Vec::new(); // For EventData num
+    let mut fans_num = Vec::new();
+    let mut fans_speed = Vec::new();
+    let mut user_events = Vec::new();
     let mut speed_tcp = Vec::new();
     let mut segment_type = Vec::new();
     let mut layer_index = Vec::new();
@@ -61,62 +82,31 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
     for group in tool_path_data.tool_path_groups.iter() {
         for segment in &group.path_segments {
             for point in &segment.points {
-                if let Some(position) = &point.position {
-                    pos_x.push(position.x);
-                    pos_y.push(position.y);
-                    pos_z.push(position.z);
-                } else {
-                    pos_x.push(f64::NAN);
-                    pos_y.push(f64::NAN);
-                    pos_z.push(f64::NAN);
-                }
+                let (px, py, pz) = extract_vector3d(point.position.as_ref());
+                let (dx, dy, dz) = extract_vector3d(point.direction.as_ref());
+                let (ox, oy, oz, ow) = extract_quaternion(point.orientation.as_ref());
 
-                if let Some(direction) = &point.direction {
-                    dir_x.push(direction.x);
-                    dir_y.push(direction.y);
-                    dir_z.push(direction.z);
-                } else {
-                    dir_x.push(f64::NAN);
-                    dir_y.push(f64::NAN);
-                    dir_z.push(f64::NAN);
-                }
+                pos_x.push(px);
+                pos_y.push(py);
+                pos_z.push(pz);
+                dir_x.push(dx);
+                dir_y.push(dy);
+                dir_z.push(dz);
+                ori_x.push(ox);
+                ori_y.push(oy);
+                ori_z.push(oz);
+                ori_w.push(ow);
 
-                if let Some(orientation) = &point.orientation {
-                    ori_x.push(orientation.x);
-                    ori_y.push(orientation.y);
-                    ori_z.push(orientation.z);
-                    ori_w.push(orientation.w);
-                } else {
-                    ori_x.push(f64::NAN);
-                    ori_y.push(f64::NAN);
-                    ori_z.push(f64::NAN);
-                    ori_w.push(f64::NAN);
-                }
-
-                // External Axes - Vector of f64
-                external_axes.push(point.external_axes.clone());
-
-                // Deposition
+                external_axes.push(SmallVec::<[f64; 10]>::from_slice(&point.external_axes));
                 deposition.push(point.deposition);
-
-                // Speed
                 speed.push(point.speed);
 
-                // Handle Fans - Push the num and speed for each FanData
-                let fan_data_num = point.fans.iter().map(|fan| fan.num).collect::<Vec<_>>();
-                let fan_data_speed = point.fans.iter().map(|fan| fan.speed).collect::<Vec<_>>();
-                fans_num.push(fan_data_num);
-                fans_speed.push(fan_data_speed);
+                let (fan_nums, fan_speeds) = extract_fans_data(&point.fans);
+                fans_num.push(fan_nums);
+                fans_speed.push(fan_speeds);
 
-                // Handle User Events - Push the num for each EventData
-                let user_event_data = point
-                    .user_events
-                    .iter()
-                    .map(|event| event.num)
-                    .collect::<Vec<_>>();
-                user_events.push(user_event_data);
+                user_events.push(extract_user_events(&point.user_events));
 
-                // Other segment data
                 speed_tcp.push(segment.speed_tcp);
                 segment_type.push(segment.r#type);
                 layer_index.push(group.layer_index);
@@ -132,7 +122,6 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
         }
     }
 
-    // Convert collected data into Polars DataFrame
     let df = DataFrame::new(vec![
         Series::new("position.x".into(), pos_x).into(),
         Series::new("position.y".into(), pos_y).into(),
@@ -156,7 +145,6 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
         Series::new("toolID".into(), tool_id).into(),
         Series::new("materialID".into(), material_id).into(),
         Series::new("segmentID".into(), segment_id).into(),
-        // New Columns for fans and user events (List of integers)
         Series::new(
             "fans.num".into(),
             ListChunked::from_iter(fans_num.into_iter().map(|v| Series::new("".into(), v))),
@@ -172,7 +160,6 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
             ListChunked::from_iter(user_events.into_iter().map(|v| Series::new("".into(), v))),
         )
         .into(),
-        // External Axes - List of floats
         Series::new(
             "externalAxes".into(),
             ListChunked::from_iter(external_axes.into_iter().map(|v| Series::new("".into(), v))),
@@ -404,7 +391,7 @@ fn polars_to_ada3dp(df: PyDataFrame, file_path: &str) -> PyResult<()> {
     Ok(())
 }
 
-#[pymodule]
+#[pymodule(name = "_internal")]
 fn py_adaone(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ada3dp_to_polars, m)?)?;
     m.add_function(wrap_pyfunction!(polars_to_ada3dp, m)?)?;

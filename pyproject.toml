@@ -3,13 +3,38 @@ requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "py-adaone"
-requires-python = ">=3.8"
+name = "py-opw-kinematics"
+dynamic = ["version"]
+requires-python = ">=3.12"
+description = "A Python interface to *.ada3dp files"
+authors = [{ name = "CEAD Group", email = "software@ceadgroup.com" }]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dynamic = ["version"]
+dependencies = [
+    "maturin>=1.8.2",
+    "polars[pyarrow,numpy]>=1.22.0",
+    "numpy>=2.2.3", 
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter",
+]
+test = [
+    "pytest",
+    "mypy",
+]
+
 [tool.maturin]
 features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "py_adaone._internal"
+include = ["python/pa_adaone/py.typed"]
+
+[project.urls]
+Homepage = "https://github.com/CEAD-group/py-opw-kinematics"
+Repository = "https://github.com/CEAD-group/py-opw-kinematics.git"
+Documentation = "https://github.com/CEAD-group/py-opw-kinematics/blob/main/README.md"
