@@ -1,6 +1,9 @@
 // lib.rs
 
-use ada3dp::{Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup, Vector3D};
+use ada3dp::{
+    EventData, FanData, Parameters, PathSegment, Point, Quaternion, ToolPathData, ToolPathGroup,
+    Vector3D,
+};
 use polars::prelude::*;
 use prost::Message;
 use pyo3::prelude::*;
@@ -286,6 +289,55 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
                 .map(|&col| segment_df.column(col)?.f64().map(|s| s.into_iter()))
                 .collect::<Result<Vec<_>, PolarsError>>()?;
 
+            // Collect fan data
+            let fans_num_column = segment_df.column("fans.num")?.list()?;
+            let fans_speed_column = segment_df.column("fans.speed")?.list()?;
+            let fans_num_data: Vec<Vec<i32>> = fans_num_column
+                .into_iter()
+                .map(|opt_list| {
+                    opt_list
+                        .map(|list| {
+                            list.i32()
+                                .unwrap()
+                                .into_iter()
+                                .map(|opt_i| opt_i.unwrap_or(0))
+                                .collect()
+                        })
+                        .unwrap_or_else(|| Vec::new())
+                })
+                .collect();
+            let fans_speed_data: Vec<Vec<i32>> = fans_speed_column
+                .into_iter()
+                .map(|opt_list| {
+                    opt_list
+                        .map(|list| {
+                            list.i32()
+                                .unwrap()
+                                .into_iter()
+                                .map(|opt_i| opt_i.unwrap_or(0))
+                                .collect()
+                        })
+                        .unwrap_or_else(|| Vec::new())
+                })
+                .collect();
+
+            // Collect user event data
+            let user_events_column = segment_df.column("userEvents.num")?.list()?;
+            let user_events_data: Vec<Vec<i32>> = user_events_column
+                .into_iter()
+                .map(|opt_list| {
+                    opt_list
+                        .map(|list| {
+                            list.i32()
+                                .unwrap()
+                                .into_iter()
+                                .map(|opt_i| opt_i.unwrap_or(0))
+                                .collect()
+                        })
+                        .unwrap_or_else(|| Vec::new())
+                })
+                .collect();
+
             for i in 0..segment_df.height() {
                 let point = Point {
                     position: Some(Vector3D {
@@ -307,8 +359,15 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
                     deposition: iters[10].next().flatten().unwrap_or(f64::NAN),
                     speed: iters[11].next().flatten().unwrap_or(f64::NAN),
                     external_axes: collected_data[i].clone(),
-                    fans: vec![],
-                    user_events: vec![],
+                    fans: fans_num_data[i]
+                        .iter()
+                        .zip(&fans_speed_data[i])
+                        .map(|(&num, &speed)| FanData { num, speed })
+                        .collect(),
+                    user_events: user_events_data[i]
+                        .iter()
+                        .map(|&num| EventData { num })
+                        .collect(),
                 };
 
                 path_segment.points.push(point);
