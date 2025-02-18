@@ -1,14 +1,14 @@
 from ._internal import ada3dp_to_polars as _ada3dp_to_polars
 from ._internal import polars_to_ada3dp as _polars_to_ada3dp
 from pathlib import Path
-from polars import DataFrame
+import polars as pl
 
 __all__ = ["ada3dp_to_polars", "polars_to_ada3dp"]
 
 
-def ada3dp_to_polars(file_path: str | Path) -> DataFrame:
+def ada3dp_to_polars(file_path: str | Path) -> pl.DataFrame:
     """
-    Convert a *.ada3dp file to a Polars DataFrame.
+    Convert a *.ada3dp file to a Polars pl.DataFrame.
 
     Parameters:
     file_path (str | Path): The path to the *.ada3dp file.
@@ -19,7 +19,7 @@ def ada3dp_to_polars(file_path: str | Path) -> DataFrame:
     return _ada3dp_to_polars(str(file_path))
 
 
-def polars_to_ada3dp(df: DataFrame, file_path: str | Path) -> None:
+def polars_to_ada3dp(df: pl.DataFrame, file_path: str | Path) -> None:
     """
     Convert a Polars DataFrame to a *.ada3dp file.
 
@@ -44,7 +44,7 @@ def polars_to_ada3dp(df: DataFrame, file_path: str | Path) -> None:
         "deposition",
         "speed",
         "speedTCP",
-        "type",
+        "segment_type",
         "layerIndex",
         "processOnDelay",
         "processOffDelay",

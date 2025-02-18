@@ -136,7 +136,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
         Series::new("deposition".into(), deposition).into(),
         Series::new("speed".into(), speed).into(),
         Series::new("speedTCP".into(), speed_tcp).into(),
-        Series::new("type".into(), segment_type).into(),
+        Series::new("segment_type".into(), segment_type).into(),
         Series::new("layerIndex".into(), layer_index).into(),
         Series::new("processOnDelay".into(), process_on_delay).into(),
         Series::new("processOffDelay".into(), process_off_delay).into(),
@@ -215,7 +215,11 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
             let mut path_segment = PathSegment {
                 points: Vec::new(),
                 process_on: false,
-                r#type: segment_df.column("type")?.i32()?.get(0).unwrap_or(0),
+                r#type: segment_df
+                    .column("segment_type")?
+                    .i32()?
+                    .get(0)
+                    .unwrap_or(0),
                 process_on_delay: segment_df
                     .column("processOnDelay")?
                     .f32()?
