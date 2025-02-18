@@ -7,6 +7,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use pyo3_polars::PyDataFrame;
 use std::fs::File;
+use std::io::Write;
 use std::io::{BufReader, Cursor, Read};
 
 pub mod ada3dp {
@@ -148,8 +149,148 @@ fn ada3dp_to_polars(file_path: &str) -> PyResult<PyDataFrame> {
         .map(|df| PyDataFrame(df))
 }
 
+fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let mut tool_path_data = ToolPathData {
+        tool_path_groups: Vec::new(),
+        parameters: vec![Parameters {
+            deposition_width: 0.0,
+            layer_height: 0.0,
+            path_planning_strategy: 0,
+            posi_axis1_val: 0.0,
+            posi_axis2_val: 0.0,
+            posi_axis1_dynamic: false,
+            posi_axis2_dynamic: false,
+        }],
+    };
+
+    // Ensure the "layerIndex" column exists
+    if !df.get_column_names().iter().any(|&col| col == "layerIndex") {
+        return Err(Box::new(PolarsError::ColumnNotFound(
+            "layerIndex column not found".into(),
+        )));
+    }
+
+    let grouped_layers = df.partition_by_stable(["layerIndex"], true)?;
+    for layer_df in grouped_layers {
+        let layer_index = layer_df.column("layerIndex")?.i32()?.get(0).unwrap_or(0);
+
+        let mut group = ToolPathGroup {
+            layer_index,
+            path_segments: Vec::new(),
+        };
+
+        let grouped_segments = layer_df.partition_by_stable(["segmentID"], true)?;
+        for segment_df in grouped_segments {
+            let segment_id = segment_df.column("segmentID")?.i32()?.get(0).unwrap_or(0);
+
+            let mut path_segment = PathSegment {
+                points: Vec::new(),
+                process_on: false,
+                r#type: segment_df.column("type")?.i32()?.get(0).unwrap_or(0),
+                process_on_delay: segment_df
+                    .column("processOnDelay")?
+                    .f32()?
+                    .get(0)
+                    .unwrap_or(0.0),
+                process_off_delay: segment_df
+                    .column("processOffDelay")?
+                    .f32()?
+                    .get(0)
+                    .unwrap_or(0.0),
+                start_delay: segment_df
+                    .column("startDelay")?
+                    .f32()?
+                    .get(0)
+                    .unwrap_or(0.0),
+                end_delay: 0.0,
+                speed_tcp: segment_df.column("speedTCP")?.i32()?.get(0).unwrap_or(0),
+                equipment_id: segment_df.column("equipmentID")?.i32()?.get(0).unwrap_or(0),
+                tool_id: segment_df.column("toolID")?.i32()?.get(0).unwrap_or(0),
+                material_id: segment_df.column("materialID")?.i32()?.get(0).unwrap_or(0),
+            };
+
+            let columns = [
+                "position.x",
+                "position.y",
+                "position.z",
+                "direction.x",
+                "direction.y",
+                "direction.z",
+                "orientation.x",
+                "orientation.y",
+                "orientation.z",
+                "orientation.w",
+                "deposition",
+                "speed",
+            ];
+
+            let mut iters = columns
+                .iter()
+                .map(|&col| segment_df.column(col)?.f64().map(|s| s.into_iter()))
+                .collect::<Result<Vec<_>, PolarsError>>()?;
+
+            for _ in 0..segment_df.height() {
+                let point = Point {
+                    position: Some(Vector3D {
+                        x: iters[0].next().flatten().unwrap_or(f64::NAN),
+                        y: iters[1].next().flatten().unwrap_or(f64::NAN),
+                        z: iters[2].next().flatten().unwrap_or(f64::NAN),
+                    }),
+                    direction: Some(Vector3D {
+                        x: iters[3].next().flatten().unwrap_or(f64::NAN),
+                        y: iters[4].next().flatten().unwrap_or(f64::NAN),
+                        z: iters[5].next().flatten().unwrap_or(f64::NAN),
+                    }),
+                    orientation: Some(Quaternion {
+                        x: iters[6].next().flatten().unwrap_or(f64::NAN),
+                        y: iters[7].next().flatten().unwrap_or(f64::NAN),
+                        z: iters[8].next().flatten().unwrap_or(f64::NAN),
+                        w: iters[9].next().flatten().unwrap_or(f64::NAN),
+                    }),
+                    deposition: iters[10].next().flatten().unwrap_or(f64::NAN),
+                    speed: iters[11].next().flatten().unwrap_or(f64::NAN),
+                    external_axes: vec![],
+                    fans: vec![],
+                    user_events: vec![],
+                };
+
+                path_segment.points.push(point);
+            }
+
+            group.path_segments.push(path_segment);
+        }
+
+        tool_path_data.tool_path_groups.push(group);
+    }
+
+    let mut buf = Vec::new();
+    tool_path_data.encode(&mut buf)?;
+    Ok(buf)
+}
+
+#[pyfunction]
+fn polars_to_ada3dp(df: PyDataFrame, file_path: &str) -> PyResult<()> {
+    let df: DataFrame = df.into();
+    let serialized_data = _polars_to_ada3dp(df).map_err(|e| {
+        PyErr::new::<PyValueError, _>(format!(
+            "Error converting Polars DataFrame to ToolPathData: {}",
+            e
+        ))
+    })?;
+
+    let mut file = File::create(file_path).map_err(|e| {
+        PyErr::new::<PyValueError, _>(format!("Error creating file {}: {}", file_path, e))
+    })?;
+    file.write_all(&serialized_data).map_err(|e| {
+        PyErr::new::<PyValueError, _>(format!("Error writing to file {}: {}", file_path, e))
+    })?;
+
+    Ok(())
+}
+
 #[pymodule]
 fn py_adaone(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ada3dp_to_polars, m)?)?;
+    m.add_function(wrap_pyfunction!(polars_to_ada3dp, m)?)?;
     Ok(())
 }
