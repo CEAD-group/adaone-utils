@@ -83,6 +83,11 @@ message PathSegment {
      DEPOSITION_START_ZONE = 10;
      DEPOSITION_END_ZONE = 11;
      PURGE = 12;
+     UNKNOWN_1 = 13;
+     UNKNOWN_2 = 14;
+     UNKNOWN_3 = 15;
+     UNKNOWN_4 = 16;
+     UNKNOWN_5 = 17;
   }
 
   repeated Point points = 1;

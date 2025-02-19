@@ -20,6 +20,40 @@ class PathPlanningStrategy(Enum):
     CONICAL_FIELDS = 7
     RADIAL_360 = 8
     CLADDING = 9
+    HEAT = 10
+    CURVE_CONVERSION = 11
+    DRILLING = 12
+    SURFACE_FINISHING = 13
+    CUTOUT = 14
+    RASTER_SCANNING = 15
+    SURFACE_SCANNING = 16
+    ABANICO = 17
+    PLANAR_FACING = 18
+    HORIZONTAL_CLEARING = 19
+
+
+class ToolPathType(Enum):
+    NONE = 0
+    WALL_OUTER = 1
+    WALL_INNER = 2
+    INFILL = 3
+    BRIM = 4
+    TRAVEL = 5
+    RAFT = 6
+    START_APPROACH = 7
+    END_RETRACT = 8
+    PREHEAT = 9
+    DEPOSITION_START_ZONE = 10
+    DEPOSITION_END_ZONE = 11
+    PURGE = 12
+    UNKNOWN_1 = 13
+    UNKNOWN_2 = 14
+    UNKNOWN_3 = 15
+    UNKNOWN_4 = 16
+    UNKNOWN_5 = 17
+
+
+tool_path_type_enum = pl.Enum(ToolPathType.__members__.keys())
 
 
 @dataclass
@@ -63,18 +97,20 @@ class Toolpath:
     """A class representing an AdaOne toolpath."""
 
     data: pl.DataFrame
-    parameters: Parameters
+    parameters: list[Parameters]
 
-    def __init__(self, data: pl.DataFrame, parameters: Parameters):
+    def __init__(self, data: pl.DataFrame, parameters: Parameters | list[Parameters]):
         """
         Initialize a Toolpath object.
 
         Parameters:
             data (pl.DataFrame): The toolpath data
-            parameters (Parameters): The toolpath parameters
+            parameters (Parameters | list[Parameters]): The toolpath parameter(s)
         """
         self.data = data
-        self.parameters = parameters
+        self.parameters = (
+            [parameters] if isinstance(parameters, Parameters) else parameters
+        )
 
     @classmethod
     def from_file(cls, file_path: str | Path) -> "Toolpath":
@@ -88,7 +124,14 @@ class Toolpath:
             Toolpath: A new Toolpath object
         """
         df, internal_parameters = _ada3dp_to_polars(str(file_path))
-        return cls(df, Parameters.from_internal_parameters(internal_parameters))
+        # Cast segment_type to ToolPathType enum
+        df = df.with_columns(
+            pl.col("segment_type").cast(pl.UInt32).cast(tool_path_type_enum)
+        )
+        parameters = [
+            Parameters.from_internal_parameters(p) for p in internal_parameters
+        ]
+        return cls(df, parameters)
 
     def to_file(self, file_path: str | Path) -> None:
         """
@@ -135,6 +178,12 @@ class Toolpath:
         if missing_columns:
             raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
 
+        # Convert the ToolPathType enum back to integers
+        df = self.data.clone()
+        df = df.with_columns(pl.col("segment_type").cast(pl.UInt32).cast(pl.Int32))
+
         _polars_to_ada3dp(
-            self.data, self.parameters.to_internal_parameters(), str(file_path)
+            df,
+            [p.to_internal_parameters() for p in self.parameters],
+            str(file_path),
         )

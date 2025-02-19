@@ -11,7 +11,7 @@ def test_read_ada3dp():
     toolpath = Toolpath.from_file(TEST_FILE_PATH)
     assert isinstance(toolpath.data, DataFrame)
     assert not toolpath.data.is_empty()
-    assert isinstance(toolpath.parameters, Parameters)
+    assert isinstance(toolpath.parameters[0], Parameters)
 
 
 def test_write_ada3dp():
