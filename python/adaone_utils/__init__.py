@@ -31,7 +31,7 @@ class PathPlanningStrategy(Enum):
     HORIZONTAL_CLEARING = 19
 
 
-class ToolPathType(Enum):
+class SegmentType(Enum):
     NONE = 0
     WALL_OUTER = 1
     WALL_INNER = 2
@@ -52,7 +52,7 @@ class ToolPathType(Enum):
     UNKNOWN_5 = 17
 
 
-tool_path_type_enum = pl.Enum(ToolPathType.__members__.keys())
+segment_type_enum = pl.Enum(SegmentType.__members__.keys())
 
 
 @dataclass
@@ -129,9 +129,9 @@ class Toolpath:
         df: pl.DataFrame
         internal_parameters: list[_Parameters]
         df, internal_parameters = ada3dp_to_polars(str(file_path))
-        # Cast segment_type to ToolPathType enum
+        # Cast segment_type to SegmentType enum
         df = df.with_columns(
-            pl.col("segment_type").cast(pl.UInt32).cast(tool_path_type_enum)
+            pl.col("segment_type").cast(pl.UInt32).cast(segment_type_enum)
         )
         parameters = [
             Parameters.from_internal_parameters(p) for p in internal_parameters
@@ -187,7 +187,7 @@ class Toolpath:
         if missing_columns:
             raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
 
-        # Convert the ToolPathType enum back to integers
+        # Convert the SegmentType enum back to integers
         df = self.data.clone()
         df = df.with_columns(pl.col("segment_type").cast(pl.UInt32).cast(pl.Int32))
 
