@@ -62,6 +62,9 @@ class Parameters:
 class Toolpath:
     """A class representing an AdaOne toolpath."""
 
+    data: pl.DataFrame
+    parameters: Parameters
+
     def __init__(self, data: pl.DataFrame, parameters: Parameters):
         """
         Initialize a Toolpath object.

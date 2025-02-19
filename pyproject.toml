@@ -32,10 +32,10 @@ test = [
 [tool.maturin]
 features = ["pyo3/extension-module"]
 python-source = "python"
-module-name = "py_adaone._internal"
+module-name = "adaone_utils._internal"
 include = ["python/pa_adaone/py.typed"]
 
 [project.urls]
-Homepage = "https://github.com/CEAD-group/py-opw-kinematics"
-Repository = "https://github.com/CEAD-group/py-opw-kinematics.git"
-Documentation = "https://github.com/CEAD-group/py-opw-kinematics/blob/main/README.md"
+Homepage = "https://github.com/CEAD-group/adaone-utils"
+Repository = "https://github.com/CEAD-group/adaone-utils.git"
+Documentation = "https://github.com/CEAD-group/adaone-utils/blob/main/README.md"

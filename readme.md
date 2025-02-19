@@ -28,19 +28,18 @@ pip install adaone-utils
 ### Reading a *.ada3dp file
 
 ```python
-from py_adaone import ada3dp_to_polars
-import polars as pl
+from adaone_utils import Toolpath
+import plotly.express as px
 
 # Load the toolpath file
-df, params = ada3dp_to_polars("path/to/your/file.ada3dp")
+toolpath = Toolpath.from_file("path/to/your/file.ada3dp")
 
 # The DataFrame contains columns for all toolpath properties
-print(df.columns)
+print(toolpath.data.columns)
 
 # Example: Plot the toolpath
-import plotly.express as px
 fig = px.line_3d(
-    df,
+    toolpath.data,
     x="position.x",
     y="position.y",
     z="position.z",
@@ -53,7 +52,7 @@ fig.show()
 ### Writing a *.ada3dp file
 
 ```python
-from py_adaone import polars_to_ada3dp, Parameters, PathPlanningStrategy
+from adaone_utils import Toolpath, Parameters, PathPlanningStrategy
 
 # Create parameters
 params = Parameters(
@@ -66,8 +65,11 @@ params = Parameters(
     deposition_width=0.4
 )
 
-# Write the modified DataFrame back to a file
-polars_to_ada3dp(df, params, "path/to/output.ada3dp")
+# Create a new toolpath or modify an existing one
+toolpath = Toolpath(data=modified_df, parameters=params)
+
+# Write to file
+toolpath.to_file("path/to/output.ada3dp")
 ```
 
 ## Data Format

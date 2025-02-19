@@ -481,7 +481,7 @@ fn polars_to_ada3dp(df: PyDataFrame, parameters: PyParameters, file_path: &str) 
 }
 
 #[pymodule(name = "_internal")]
-fn py_adaone(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn adaone_utils(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ada3dp_to_polars, m)?)?;
     m.add_function(wrap_pyfunction!(polars_to_ada3dp, m)?)?;
     m.add_class::<PyParameters>()?;

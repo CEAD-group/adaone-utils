@@ -1,31 +1,32 @@
 import pytest
 from pathlib import Path
 from polars import DataFrame
-from py_adaone import ada3dp_to_polars, polars_to_ada3dp, Parameters
+from adaone_utils import Toolpath, Parameters
 
 TEST_FILE_PATH = Path(__file__).parent / "test.ada3dp"
 OUTPUT_FILE_PATH = Path(__file__).parent / "test_output.ada3dp"
 
 
 def test_read_ada3dp():
-    df, params = ada3dp_to_polars(TEST_FILE_PATH)
-    assert isinstance(df, DataFrame)
-    assert not df.is_empty()
-    assert isinstance(params, Parameters)
+    toolpath = Toolpath.from_file(TEST_FILE_PATH)
+    assert isinstance(toolpath.data, DataFrame)
+    assert not toolpath.data.is_empty()
+    assert isinstance(toolpath.parameters, Parameters)
 
 
 def test_write_ada3dp():
-    df, params = ada3dp_to_polars(TEST_FILE_PATH)
-    polars_to_ada3dp(df, params, OUTPUT_FILE_PATH)
+    toolpath = Toolpath.from_file(TEST_FILE_PATH)
+    toolpath.to_file(OUTPUT_FILE_PATH)
     assert OUTPUT_FILE_PATH.exists()
 
 
 def test_roundtrip_ada3dp():
-    df, params = ada3dp_to_polars(TEST_FILE_PATH)
-    polars_to_ada3dp(df, params, OUTPUT_FILE_PATH)
-    df_roundtrip, params_roundtrip = ada3dp_to_polars(OUTPUT_FILE_PATH)
-    assert df.equals(df_roundtrip)
-    assert params == params_roundtrip
+    original_toolpath = Toolpath.from_file(TEST_FILE_PATH)
+    original_toolpath.to_file(OUTPUT_FILE_PATH)
+    roundtrip_toolpath = Toolpath.from_file(OUTPUT_FILE_PATH)
+
+    assert original_toolpath.data.equals(roundtrip_toolpath.data)
+    assert original_toolpath.parameters == roundtrip_toolpath.parameters
 
 
 if __name__ == "__main__":
