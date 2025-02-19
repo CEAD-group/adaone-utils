@@ -36,6 +36,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.13
+      - name: Install Protobuf Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
       - name: Update Cargo.toml Version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -88,6 +92,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.13
+      - name: Install Protobuf Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
       - name: Update Cargo.toml Version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -120,6 +128,9 @@ jobs:
         with:
           python-version: 3.13
           architecture: ${{ matrix.target }}
+      - name: Install Protobuf Compiler
+        run: |
+          choco install protoc
       - name: Update Cargo.toml Version
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
@@ -156,6 +167,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.13
+      - name: Install Protobuf Compiler
+        run: |
+          brew install protobuf
       - name: Update Cargo.toml Version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
