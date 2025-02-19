@@ -1,14 +1,30 @@
-from polars import DataFrame
-from typing import Any, TypedDict, tuple
+import polars as pl
 
-class Parameters(TypedDict):
-    layerHeight: float
-    depositionWidth: float
-    posiAxis1Val: float
-    posiAxis2Val: float
-    posiAxis1Dynamic: bool
-    posiAxis2Dynamic: bool
-    pathPlanningStrategy: int
+class PyParameters:
+    layer_height: float
+    path_planning_strategy: int
+    posi_axis1_val: float
+    posi_axis2_val: float
+    posi_axis1_dynamic: bool
+    posi_axis2_dynamic: bool
+    deposition_width: float
+    def __init__(
+        self,
+        layer_height: float,
+        path_planning_strategy: int,
+        posi_axis1_val: float,
+        posi_axis2_val: float,
+        posi_axis1_dynamic: bool,
+        posi_axis2_dynamic: bool,
+        deposition_width: float,
+    ) -> None: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __str__(self) -> str: ...
+    def __repr__(self) -> str: ...
 
-def ada3dp_to_adaone(file_path: str) -> tuple[DataFrame, Parameters]: ...
-def adaone_to_ada3dp(df: DataFrame, parameters: Parameters, file_path: str) -> Any: ...
+def ada3dp_to_polars(filepath: str) -> tuple[pl.DataFrame, list[PyParameters]]: ...
+def polars_to_ada3dp(
+    df: pl.DataFrame,
+    parameters: list[PyParameters],
+    filepath: str,
+) -> None: ...

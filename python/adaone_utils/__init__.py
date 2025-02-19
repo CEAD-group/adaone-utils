@@ -1,12 +1,11 @@
-from ._internal import ada3dp_to_polars as _ada3dp_to_polars
-from ._internal import polars_to_ada3dp as _polars_to_ada3dp
+from ._internal import ada3dp_to_polars, polars_to_ada3dp
 from ._internal import PyParameters as _Parameters
 from pathlib import Path
 import polars as pl
 from enum import Enum
 from dataclasses import dataclass
 
-__all__ = ["Toolpath", "Parameters", "PathPlanningStrategy"]
+__all__ = ["ada3dp_to_polars", "polars_to_polars", "Parameters", "PathPlanningStrategy"]
 
 
 class PathPlanningStrategy(Enum):
@@ -123,7 +122,9 @@ class Toolpath:
         Returns:
             Toolpath: A new Toolpath object
         """
-        df, internal_parameters = _ada3dp_to_polars(str(file_path))
+        df: pl.DataFrame
+        internal_parameters: list[_Parameters]
+        df, internal_parameters = ada3dp_to_polars(str(file_path))
         # Cast segment_type to ToolPathType enum
         df = df.with_columns(
             pl.col("segment_type").cast(pl.UInt32).cast(tool_path_type_enum)
@@ -182,7 +183,7 @@ class Toolpath:
         df = self.data.clone()
         df = df.with_columns(pl.col("segment_type").cast(pl.UInt32).cast(pl.Int32))
 
-        _polars_to_ada3dp(
+        polars_to_ada3dp(
             df,
             [p.to_internal_parameters() for p in self.parameters],
             str(file_path),
