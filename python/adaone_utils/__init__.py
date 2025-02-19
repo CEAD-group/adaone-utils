@@ -122,6 +122,10 @@ class Toolpath:
         Returns:
             Toolpath: A new Toolpath object
         """
+        file_path = Path(file_path).resolve(strict=True)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
         df: pl.DataFrame
         internal_parameters: list[_Parameters]
         df, internal_parameters = ada3dp_to_polars(str(file_path))
@@ -172,6 +176,10 @@ class Toolpath:
             "userEvents.num",
             "externalAxes",
         ]
+
+        file_path = Path(file_path).resolve(strict=True)
+        if not file_path.parent.exists():
+            raise FileNotFoundError(f"Parent directory not found: {file_path.parent}")
 
         missing_columns = [
             col for col in required_columns if col not in self.data.columns
