@@ -3,10 +3,10 @@ requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "py-opw-kinematics"
+name = "adaone-utils"
 dynamic = ["version"]
 requires-python = ">=3.12"
-description = "A Python interface to *.ada3dp files"
+description = "Utilities for working with AdaOne toolpaths"
 authors = [{ name = "CEAD Group", email = "software@ceadgroup.com" }]
 classifiers = [
     "Programming Language :: Rust",

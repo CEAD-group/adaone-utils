@@ -3,6 +3,19 @@
 version = 4
 
 [[package]]
+name = "adaone-utils"
+version = "0.1.0"
+dependencies = [
+ "polars",
+ "prost",
+ "prost-build",
+ "prost-types",
+ "pyo3",
+ "pyo3-polars",
+ "smallvec",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1516,19 +1529,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f58e5423e24c18cc840e1c98370b3993c6649cd1678b4d24318bcf0a083cbe88"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "py-adaone"
-version = "0.1.0"
-dependencies = [
- "polars",
- "prost",
- "prost-build",
- "prost-types",
- "pyo3",
- "pyo3-polars",
- "smallvec",
 ]
 
 [[package]]
