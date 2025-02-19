@@ -7,6 +7,9 @@ name = "adaone-utils"
 dynamic = ["version"]
 requires-python = ">=3.12"
 description = "Utilities for working with AdaOne toolpaths"
+readme = "readme.md"
+license = "MIT"
+keywords = ["adaone", "adaxis", "toolpath", "slicing", "3d-printing", "robotics"]
 authors = [{ name = "CEAD Group", email = "software@ceadgroup.com" }]
 classifiers = [
     "Programming Language :: Rust",
