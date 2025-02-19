@@ -54,7 +54,11 @@ jobs:
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
-            yum install -y protobuf-compiler
+            # Install latest protobuf compiler
+            PROTOC_VERSION=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+            curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/${PROTOC_VERSION}/protoc-${PROTOC_VERSION#v}-linux-x86_64.zip"
+            unzip "protoc-${PROTOC_VERSION#v}-linux-x86_64.zip" -d /usr/local
+            rm "protoc-${PROTOC_VERSION#v}-linux-x86_64.zip"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
