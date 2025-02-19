@@ -16,6 +16,69 @@ pub mod ada3dp {
     include!(concat!(env!("OUT_DIR"), "/ada3_dp.rs"));
 }
 
+#[pyclass]
+#[derive(Clone, PartialEq)]
+struct PyParameters {
+    #[pyo3(get, set)]
+    layer_height: f64,
+    #[pyo3(get, set)]
+    path_planning_strategy: i32,
+    #[pyo3(get, set)]
+    posi_axis1_val: f64,
+    #[pyo3(get, set)]
+    posi_axis2_val: f64,
+    #[pyo3(get, set)]
+    posi_axis1_dynamic: bool,
+    #[pyo3(get, set)]
+    posi_axis2_dynamic: bool,
+    #[pyo3(get, set)]
+    deposition_width: f64,
+}
+
+#[pymethods]
+impl PyParameters {
+    #[new]
+    #[pyo3(
+        text_signature = "(layer_height, path_planning_strategy, posi_axis1_val, posi_axis2_val, posi_axis1_dynamic, posi_axis2_dynamic, deposition_width)"
+    )]
+    fn new(
+        layer_height: f64,
+        path_planning_strategy: i32,
+        posi_axis1_val: f64,
+        posi_axis2_val: f64,
+        posi_axis1_dynamic: bool,
+        posi_axis2_dynamic: bool,
+        deposition_width: f64,
+    ) -> Self {
+        PyParameters {
+            layer_height,
+            path_planning_strategy,
+            posi_axis1_val,
+            posi_axis2_val,
+            posi_axis1_dynamic,
+            posi_axis2_dynamic,
+            deposition_width,
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!(
+            "PyParameters(layer_height={}, path_planning_strategy={}, posi_axis1_val={}, posi_axis2_val={}, posi_axis1_dynamic={}, posi_axis2_dynamic={}, deposition_width={})",
+            self.layer_height,
+            self.path_planning_strategy,
+            self.posi_axis1_val,
+            self.posi_axis2_val,
+            self.posi_axis1_dynamic,
+            self.posi_axis2_dynamic,
+            self.deposition_width
+        )
+    }
+
+    fn __repr__(&self) -> String {
+        self.__str__()
+    }
+}
+
 // Utility function to handle missing `Vector3D`
 fn extract_vector3d(v: Option<&Vector3D>) -> (f64, f64, f64) {
     match v {
@@ -42,7 +105,7 @@ fn extract_user_events(events: &[EventData]) -> Vec<i32> {
     events.iter().map(|event| event.num).collect()
 }
 
-fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
+fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, PyParameters), Box<dyn Error>> {
     let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
     let mut buf = Vec::new();
@@ -167,30 +230,52 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<DataFrame, Box<dyn Error>> {
         .into(),
     ])?;
 
-    Ok(df)
-}
-
-/// Converts the result of _ada3dp_to_polars into a Python DataFrame, mapping any errors to PyValueError
-#[pyfunction(signature = (file_path))]
-fn ada3dp_to_polars(file_path: &str) -> PyResult<PyDataFrame> {
-    _ada3dp_to_polars(file_path)
-        .map_err(|e| {
-            PyErr::new::<PyValueError, _>(format!("Error converting to Polars DataFrame: {}", e))
-        })
-        .map(|df| PyDataFrame(df))
-}
-
-fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
-    let mut tool_path_data = ToolPathData {
-        tool_path_groups: Vec::new(),
-        parameters: vec![Parameters {
-            deposition_width: 0.0,
+    let parameters = if let Some(params) = tool_path_data.parameters.first() {
+        PyParameters {
+            layer_height: params.layer_height,
+            deposition_width: params.deposition_width,
+            posi_axis1_val: params.posi_axis1_val,
+            posi_axis2_val: params.posi_axis2_val,
+            posi_axis1_dynamic: params.posi_axis1_dynamic,
+            posi_axis2_dynamic: params.posi_axis2_dynamic,
+            path_planning_strategy: params.path_planning_strategy,
+        }
+    } else {
+        PyParameters {
             layer_height: 0.0,
-            path_planning_strategy: 0,
+            deposition_width: 0.0,
             posi_axis1_val: 0.0,
             posi_axis2_val: 0.0,
             posi_axis1_dynamic: false,
             posi_axis2_dynamic: false,
+            path_planning_strategy: 0,
+        }
+    };
+
+    Ok((df, parameters))
+}
+
+/// Converts the result of _ada3dp_to_polars into a Python DataFrame, mapping any errors to PyValueError
+#[pyfunction(signature = (file_path))]
+fn ada3dp_to_polars(file_path: &str) -> PyResult<(PyDataFrame, PyParameters)> {
+    _ada3dp_to_polars(file_path)
+        .map_err(|e| {
+            PyErr::new::<PyValueError, _>(format!("Error converting to Polars DataFrame: {}", e))
+        })
+        .map(|(df, params)| (PyDataFrame(df), params))
+}
+
+fn _polars_to_ada3dp(df: DataFrame, parameters: PyParameters) -> Result<Vec<u8>, Box<dyn Error>> {
+    let mut tool_path_data = ToolPathData {
+        tool_path_groups: Vec::new(),
+        parameters: vec![Parameters {
+            layer_height: parameters.layer_height,
+            deposition_width: parameters.deposition_width,
+            posi_axis1_val: parameters.posi_axis1_val,
+            posi_axis2_val: parameters.posi_axis2_val,
+            posi_axis1_dynamic: parameters.posi_axis1_dynamic,
+            posi_axis2_dynamic: parameters.posi_axis2_dynamic,
+            path_planning_strategy: parameters.path_planning_strategy,
         }],
     };
 
@@ -376,9 +461,9 @@ fn _polars_to_ada3dp(df: DataFrame) -> Result<Vec<u8>, Box<dyn Error>> {
 }
 
 #[pyfunction]
-fn polars_to_ada3dp(df: PyDataFrame, file_path: &str) -> PyResult<()> {
+fn polars_to_ada3dp(df: PyDataFrame, parameters: PyParameters, file_path: &str) -> PyResult<()> {
     let df: DataFrame = df.into();
-    let serialized_data = _polars_to_ada3dp(df).map_err(|e| {
+    let serialized_data = _polars_to_ada3dp(df, parameters).map_err(|e| {
         PyErr::new::<PyValueError, _>(format!(
             "Error converting Polars DataFrame to ToolPathData: {}",
             e
@@ -399,5 +484,6 @@ fn polars_to_ada3dp(df: PyDataFrame, file_path: &str) -> PyResult<()> {
 fn py_adaone(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ada3dp_to_polars, m)?)?;
     m.add_function(wrap_pyfunction!(polars_to_ada3dp, m)?)?;
+    m.add_class::<PyParameters>()?;
     Ok(())
 }
