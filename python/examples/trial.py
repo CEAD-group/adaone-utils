@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+# %% imports
 import polars as pl
 import numpy as np
 from scipy.interpolate import interp1d
@@ -32,7 +32,7 @@ df = df.drop(
     ]
 )
 
-# Compute distance and duration
+# %% Compute distance and duration
 
 df = df.with_columns(
     pl.sum_horizontal(
@@ -78,11 +78,14 @@ data = df.filter((df["segmentID"] == 1)).to_numpy()
 
 
 def resample_points(df: pl.DataFrame, step: float = 5.0) -> pl.DataFrame:
+    # Get min and max as floats - use item() to get scalar values
+    min_len = float(df["total_length"].min())  # type: ignore
+    max_len = float(df["total_length"].max())  # type: ignore
     # Define the new total_length values at uniform 5mm intervals
     new_total_len = np.linspace(
-        df["total_length"].min(),
-        df["total_length"].max(),
-        int((df["total_length"].max() - df["total_length"].min()) / step) + 2,
+        min_len,
+        max_len,
+        int((max_len - min_len) / step) + 2,
     )
 
     # Convert to Pandas for interpolation
@@ -133,12 +136,12 @@ def resample_points(df: pl.DataFrame, step: float = 5.0) -> pl.DataFrame:
     return new_df
 
 
-# Apply resampling for wall segments
+# %% Apply resampling for wall segments
 segments = []
 for seg in df.filter((df["segmentID"] < 20)).partition_by("segmentID"):
-    if seg["segment_type"].first() == 1:  # WALL_OUTER
+    if seg["segment_type"].first() == "WALL_OUTER":
         segments.append(resample_points(seg, step=4.0))
-    elif seg["segment_type"].first() == 2:  # WALL_INNER
+    elif seg["segment_type"].first() == "WALL_INNER":
         segments.append(resample_points(seg, step=10.0))
     else:
         segments.append(seg)
@@ -177,6 +180,8 @@ resampled_df = resampled_df.with_columns(
     .alias("externalAxes")
 )
 
-# Create a new toolpath with the resampled data and original parameters
+# %% Create a new toolpath with the resampled data and original parameters
 resampled_toolpath = Toolpath(data=resampled_df, parameters=toolpath.parameters)
 resampled_toolpath.to_file(input_file.with_stem("resampled"))
+
+# %%
