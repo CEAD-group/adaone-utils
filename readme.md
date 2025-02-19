@@ -97,7 +97,7 @@ Properties that apply to an entire segment (continuous toolpath):
 - `processOnDelay`: Delay before starting process in seconds
 - `processOffDelay`: Delay after stopping process in seconds
 - `startDelay`: Delay before starting movement in seconds
-- `equipmentID`: ID of the equipment used
+- `processHeadID`: ID of the equipment used
 - `toolID`: ID of the tool used
 - `materialID`: ID of the material used
 

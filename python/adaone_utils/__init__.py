@@ -119,7 +119,7 @@ class Toolpath:
             "processOnDelay",
             "processOffDelay",
             "startDelay",
-            "equipmentID",
+            "processHeadID",
             "toolID",
             "materialID",
             "segmentID",

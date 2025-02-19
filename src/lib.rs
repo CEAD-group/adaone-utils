@@ -135,7 +135,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, PyParameters), Box<d
     let mut process_on_delay = Vec::new();
     let mut process_off_delay = Vec::new();
     let mut start_delay = Vec::new();
-    let mut equipment_id = Vec::new();
+    let mut process_head_id = Vec::new();
     let mut tool_id = Vec::new();
     let mut material_id = Vec::new();
     let mut segment_id = Vec::new();
@@ -176,7 +176,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, PyParameters), Box<d
                 process_on_delay.push(segment.process_on_delay);
                 process_off_delay.push(segment.process_off_delay);
                 start_delay.push(segment.start_delay);
-                equipment_id.push(segment.equipment_id);
+                process_head_id.push(segment.process_head_id);
                 tool_id.push(segment.tool_id);
                 material_id.push(segment.material_id);
                 segment_id.push(segment_counter);
@@ -204,7 +204,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, PyParameters), Box<d
         Series::new("processOnDelay".into(), process_on_delay).into(),
         Series::new("processOffDelay".into(), process_off_delay).into(),
         Series::new("startDelay".into(), start_delay).into(),
-        Series::new("equipmentID".into(), equipment_id).into(),
+        Series::new("processHeadID".into(), process_head_id).into(),
         Series::new("toolID".into(), tool_id).into(),
         Series::new("materialID".into(), material_id).into(),
         Series::new("segmentID".into(), segment_id).into(),
@@ -322,7 +322,11 @@ fn _polars_to_ada3dp(df: DataFrame, parameters: PyParameters) -> Result<Vec<u8>,
                     .unwrap_or(0.0),
                 end_delay: 0.0,
                 speed_tcp: segment_df.column("speedTCP")?.i32()?.get(0).unwrap_or(0),
-                equipment_id: segment_df.column("equipmentID")?.i32()?.get(0).unwrap_or(0),
+                process_head_id: segment_df
+                    .column("processHeadID")?
+                    .i32()?
+                    .get(0)
+                    .unwrap_or(0),
                 tool_id: segment_df.column("toolID")?.i32()?.get(0).unwrap_or(0),
                 material_id: segment_df.column("materialID")?.i32()?.get(0).unwrap_or(0),
             };

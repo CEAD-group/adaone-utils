@@ -35,7 +35,17 @@ message Parameters {
      GEODESIC = 6;
      CONICAL_FIELDS = 7;
      RADIAL_360 = 8;
-     CLADDING = 9;
+     CLADDING = 9;    
+     HEAT = 10;
+     CURVE_CONVERSION = 11;
+     DRILLING = 12;
+     SURFACE_FINISHING = 13;
+     CUTOUT = 14;
+     RASTER_SCANNING = 15;
+     SURFACE_SCANNING = 16;
+	   ABANICO = 17;
+     PLANAR_FACING = 18;
+     HORIZONTAL_CLEARING = 19;
   }
 
   double layerHeight = 1;
@@ -67,6 +77,12 @@ message PathSegment {
      BRIM = 4; 
      TRAVEL = 5;
      RAFT = 6;
+     START_APPROACH = 7;
+     END_RETRACT = 8; 
+     PREHEAT = 9;
+     DEPOSITION_START_ZONE = 10;
+     DEPOSITION_END_ZONE = 11;
+     PURGE = 12;
   }
 
   repeated Point points = 1;
@@ -77,7 +93,7 @@ message PathSegment {
   float startDelay = 6;
   float endDelay = 7;
   int32 speedTCP = 8;
-  int32 equipmentID = 9;
+  int32 processHeadID = 9;
   int32 toolID = 10;
   int32 materialID = 11;
 }
