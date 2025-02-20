@@ -122,7 +122,7 @@ class Toolpath:
         Returns:
             Toolpath: A new Toolpath object
         """
-        file_path = Path(file_path).resolve(strict=True)
+        file_path = Path(file_path).resolve(strict=False)
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -177,7 +177,7 @@ class Toolpath:
             "externalAxes",
         ]
 
-        file_path = Path(file_path).resolve(strict=True)
+        file_path = Path(file_path).resolve(strict=False)
         if not file_path.parent.exists():
             raise FileNotFoundError(f"Parent directory not found: {file_path.parent}")
 
