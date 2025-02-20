@@ -139,6 +139,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, Vec<PyParameters>), 
     let mut tool_id = Vec::new();
     let mut material_id = Vec::new();
     let mut segment_id = Vec::new();
+    let mut process_on = Vec::new();
 
     let mut segment_counter = 0;
 
@@ -180,6 +181,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, Vec<PyParameters>), 
                 tool_id.push(segment.tool_id);
                 material_id.push(segment.material_id);
                 segment_id.push(segment_counter);
+                process_on.push(segment.process_on);
             }
             segment_counter += 1;
         }
@@ -208,6 +210,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, Vec<PyParameters>), 
         Series::new("toolID".into(), tool_id).into(),
         Series::new("materialID".into(), material_id).into(),
         Series::new("segmentID".into(), segment_id).into(),
+        Series::new("processOn".into(), process_on).into(),
         Series::new(
             "fans.num".into(),
             ListChunked::from_iter(fans_num.into_iter().map(|v| Series::new("".into(), v))),
@@ -312,7 +315,11 @@ fn _polars_to_ada3dp(
         for segment_df in grouped_segments {
             let mut path_segment = PathSegment {
                 points: Vec::new(),
-                process_on: false,
+                process_on: segment_df
+                    .column("processOn")?
+                    .bool()?
+                    .get(0)
+                    .unwrap_or(false),
                 r#type: segment_df
                     .column("segment_type")?
                     .i32()?

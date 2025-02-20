@@ -1,10 +1,8 @@
 # %%
 from adaone_utils import Toolpath
 from pathlib import Path
-import pytest
 
 
-@pytest.mark.xfail(reason="Known issue: rondtrip file sizes are incorrect")
 def test_roundtrip():
     # Load input file
     input_file = Path(__file__).parent / "cone.ada3dp"

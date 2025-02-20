@@ -164,6 +164,7 @@ class Toolpath:
             "speedTCP",
             "segment_type",
             "layerIndex",
+            "processOn",
             "processOnDelay",
             "processOffDelay",
             "startDelay",
