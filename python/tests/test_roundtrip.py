@@ -12,5 +12,5 @@ def test_roundtrip():
     output_file = input_file.with_stem("cone.roundtrip")
     toolpath.to_file(output_file)
 
-    # assert files are equal size
-    assert input_file.stat().st_size == output_file.stat().st_size
+    # asert files are equal
+    assert input_file.read_bytes() == output_file.read_bytes()
