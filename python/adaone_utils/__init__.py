@@ -5,7 +5,13 @@ import polars as pl
 from enum import Enum
 from dataclasses import dataclass
 
-__all__ = ["ada3dp_to_polars", "polars_to_polars", "Parameters", "PathPlanningStrategy"]
+__all__ = [
+    "ada3dp_to_polars",
+    "polars_to_polars",
+    "Parameters",
+    "PathPlanningStrategy",
+    "TrackParameters",
+]
 
 
 class PathPlanningStrategy(Enum):
@@ -90,6 +96,16 @@ class Parameters:
             posi_axis2_dynamic=internal_parameters.posi_axis2_dynamic,
             deposition_width=internal_parameters.deposition_width,
         )
+
+
+@dataclass
+class TrackParameters:
+    """Machine-specific track parameters for ELX calculations."""
+
+    track_length: float = 14425  # mm
+    x_0: float = -60  # mm
+    y_0: float = 2000  # mm
+    trailing_distance: float = 2800  # mm, approximate value derived from data
 
 
 class Toolpath:
