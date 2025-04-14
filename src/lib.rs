@@ -140,6 +140,7 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, Vec<PyParameters>), 
     let mut material_id = Vec::new();
     let mut segment_id = Vec::new();
     let mut process_on = Vec::new();
+    let mut deposition_rate_multiplier = Vec::new();
 
     let mut segment_counter = 0;
 
@@ -182,12 +183,14 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, Vec<PyParameters>), 
                 material_id.push(segment.material_id);
                 segment_id.push(segment_counter);
                 process_on.push(segment.process_on);
+                deposition_rate_multiplier
+                    .push(point.deposition_rate_multiplier.unwrap_or(f64::NAN));
             }
             segment_counter += 1;
         }
     }
 
-    let df = DataFrame::new(vec![
+    let mut columns = vec![
         Series::new("position.x".into(), pos_x).into(),
         Series::new("position.y".into(), pos_y).into(),
         Series::new("position.z".into(), pos_z).into(),
@@ -231,7 +234,20 @@ fn _ada3dp_to_polars(file_path: &str) -> Result<(DataFrame, Vec<PyParameters>), 
             ListChunked::from_iter(external_axes.into_iter().map(|v| Series::new("".into(), v))),
         )
         .into(),
-    ])?;
+    ];
+    // Add depositionRateMultiplier only if it contains non-NaN values
+
+    if !deposition_rate_multiplier.iter().all(|&v| v.is_nan()) {
+        columns.push(
+            Series::new(
+                "depositionRateMultiplier".into(),
+                deposition_rate_multiplier,
+            )
+            .into(),
+        );
+    }
+
+    let df = DataFrame::new(columns)?;
 
     let parameters: Vec<PyParameters> = tool_path_data
         .parameters
@@ -295,6 +311,10 @@ fn _polars_to_ada3dp(
             .collect(),
     };
 
+    let has_deposition_rate_multiplier = df
+        .get_column_names()
+        .iter()
+        .any(|&col| col == "depositionRateMultiplier");
     // Ensure the "layerIndex" column exists
     if !df.get_column_names().iter().any(|&col| col == "layerIndex") {
         return Err(Box::new(PolarsError::ColumnNotFound(
@@ -349,9 +369,14 @@ fn _polars_to_ada3dp(
                     .unwrap_or(0),
                 tool_id: segment_df.column("toolID")?.i32()?.get(0).unwrap_or(0),
                 material_id: segment_df.column("materialID")?.i32()?.get(0).unwrap_or(0),
+                deposition_rate_multiplier: if has_deposition_rate_multiplier {
+                    segment_df.column("depositionRateMultiplier")?.f64()?.get(0)
+                } else {
+                    None
+                },
             };
 
-            let columns = [
+            let mut columns = vec![
                 "position.x",
                 "position.y",
                 "position.z",
@@ -366,6 +391,10 @@ fn _polars_to_ada3dp(
                 "speed",
             ];
 
+            // add "depositionRateMultiplier" if it exists
+            if has_deposition_rate_multiplier {
+                columns.push("depositionRateMultiplier")
+            }
             // handling the list[Float64] column is a pain. So we collect it first into a simple Vec<Vec<f64>>
             let list_column = segment_df.column("externalAxes")?;
             let chunked_array = list_column.list()?;
@@ -380,7 +409,7 @@ fn _polars_to_ada3dp(
                                 .map(|opt_f| opt_f.unwrap_or(0.0))
                                 .collect()
                         })
-                        .unwrap_or_else(|| Vec::new())
+                        .unwrap_or_else(Vec::new)
                 })
                 .collect();
 
@@ -403,7 +432,7 @@ fn _polars_to_ada3dp(
                                 .map(|opt_i| opt_i.unwrap_or(0))
                                 .collect()
                         })
-                        .unwrap_or_else(|| Vec::new())
+                        .unwrap_or_else(Vec::new)
                 })
                 .collect();
             let fans_speed_data: Vec<Vec<i32>> = fans_speed_column
@@ -417,7 +446,7 @@ fn _polars_to_ada3dp(
                                 .map(|opt_i| opt_i.unwrap_or(0))
                                 .collect()
                         })
-                        .unwrap_or_else(|| Vec::new())
+                        .unwrap_or_else(Vec::new)
                 })
                 .collect();
 
@@ -434,7 +463,7 @@ fn _polars_to_ada3dp(
                                 .map(|opt_i| opt_i.unwrap_or(0))
                                 .collect()
                         })
-                        .unwrap_or_else(|| Vec::new())
+                        .unwrap_or_else(Vec::new)
                 })
                 .collect();
 
@@ -468,6 +497,11 @@ fn _polars_to_ada3dp(
                         .iter()
                         .map(|&num| EventData { num })
                         .collect(),
+                    deposition_rate_multiplier: if has_deposition_rate_multiplier {
+                        iters[12].next().flatten()
+                    } else {
+                        None
+                    },
                 };
 
                 path_segment.points.push(point);

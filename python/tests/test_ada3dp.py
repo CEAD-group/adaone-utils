@@ -24,7 +24,6 @@ def test_roundtrip_ada3dp() -> None:
     original_toolpath = Toolpath.from_file(TEST_FILE_PATH)
     original_toolpath.to_file(OUTPUT_FILE_PATH)
     roundtrip_toolpath = Toolpath.from_file(OUTPUT_FILE_PATH)
-
     assert original_toolpath.data.equals(roundtrip_toolpath.data)
     assert original_toolpath.parameters == roundtrip_toolpath.parameters
 

@@ -43,7 +43,7 @@ message Parameters {
      CUTOUT = 14;
      RASTER_SCANNING = 15;
      SURFACE_SCANNING = 16;
-	   ABANICO = 17;
+     ABANICO = 17;
      PLANAR_FACING = 18;
      HORIZONTAL_CLEARING = 19;
   }
@@ -66,6 +66,7 @@ message Point {
   double speed = 6;
   repeated FanData fans = 7;
   repeated EventData userEvents = 8;
+  optional double depositionRateMultiplier = 9;
 } 
 
 message PathSegment {
@@ -78,16 +79,16 @@ message PathSegment {
      TRAVEL = 5;
      RAFT = 6;
      START_APPROACH = 7;
-     END_RETRACT = 8; 
+     END_RETRACT = 8;
      PREHEAT = 9;
      DEPOSITION_START_ZONE = 10;
      DEPOSITION_END_ZONE = 11;
      PURGE = 12;
-     UNKNOWN_1 = 13;
-     UNKNOWN_2 = 14;
-     UNKNOWN_3 = 15;
-     UNKNOWN_4 = 16;
-     UNKNOWN_5 = 17;
+     WALL_MIDST = 13;
+     ENGAGE = 14;
+     DISENGAGE = 15;
+     UNKNOWN_1 = 16;
+     UNKNOWN_2 = 17;
   }
 
   repeated Point points = 1;
@@ -101,6 +102,7 @@ message PathSegment {
   int32 processHeadID = 9;
   int32 toolID = 10;
   int32 materialID = 11;
+  optional double depositionRateMultiplier = 12;
 }
 
 message ToolPathGroup {

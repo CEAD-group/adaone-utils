@@ -8,6 +8,7 @@ class PyParameters:
     posi_axis1_dynamic: bool
     posi_axis2_dynamic: bool
     deposition_width: float
+    deposition_rate_multiplier: float | None
     def __init__(
         self,
         layer_height: float,
@@ -17,6 +18,7 @@ class PyParameters:
         posi_axis1_dynamic: bool,
         posi_axis2_dynamic: bool,
         deposition_width: float,
+        deposition_rate_multiplier: float | None = None,
     ) -> None: ...
     def __eq__(self, other: object) -> bool: ...
     def __str__(self) -> str: ...

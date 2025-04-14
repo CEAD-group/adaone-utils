@@ -51,11 +51,11 @@ class SegmentType(Enum):
     DEPOSITION_START_ZONE = 10
     DEPOSITION_END_ZONE = 11
     PURGE = 12
-    UNKNOWN_1 = 13
-    UNKNOWN_2 = 14
-    UNKNOWN_3 = 15
-    UNKNOWN_4 = 16
-    UNKNOWN_5 = 17
+    WALL_MIDST = 13
+    ENGAGE = 14
+    DISENGAGE = 15
+    UNKNOWN_1 = 16
+    UNKNOWN_2 = 17
 
 
 segment_type_enum = pl.Enum(SegmentType.__members__.keys())
@@ -191,7 +191,10 @@ class Toolpath:
             "fans.num",
             "fans.speed",
             "userEvents.num",
-            "externalAxes",
+            "externalAxes"
+        ]
+        optional_columns = [
+              "depositionRateMultiplier",  #
         ]
 
         file_path = Path(file_path).resolve(strict=False)
@@ -204,6 +207,12 @@ class Toolpath:
         if missing_columns:
             raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
 
+        superfluous_columns = [
+            col for col in self.data.columns if col not in required_columns + optional_columns
+        ]   
+        if superfluous_columns:
+            raise UserWarning(f"Superfluous columns wil be ignored. Found: {', '.join(superfluous_columns)}")
+        
         # Convert the SegmentType enum back to integers
         df = self.data.clone()
         df = df.with_columns(pl.col("segment_type").cast(pl.UInt32).cast(pl.Int32))
